@@ -1,163 +1,174 @@
 # CaseGenAI
 
-API para geração automática de cases de estudo para startups utilizando IA.
+Número solto não convence ninguém. O CaseGenAI é uma API que pega as métricas de uma startup (antes e depois) e devolve um case de sucesso bem escrito, pronto pra postar, mandar pra investidor ou colocar no site.
 
-## Descrição
+Junto com a API vem uma página simples pra testar no navegador: preenche o nome da startup, as métricas, clica em **Gerar case** e pronto.
 
-O CaseGenAI é uma API desenvolvida em PHP com Slim Framework e MongoDB que permite gerar automaticamente cases de estudo para startups com base em métricas de crescimento. A API utiliza a tecnologia Gemini AI da Google para criar textos persuasivos e profissionais que destacam o crescimento e sucesso das startups.
+## Como funciona
 
-## Requisitos
+1. Você manda as métricas no formato `algo_antes` / `algo_depois` (ex: `usuarios_antes: 1000`, `usuarios_depois: 4500`).
+2. A API calcula o crescimento de cada par (variação em % e quantas vezes cresceu).
+3. Esses números vão pro **Gemini**, do Google, com instruções pra escrever um case curto, em português, sem inventar dado nenhum.
+4. O case fica salvo e ganha um link próprio (`/case/{id}`) pra compartilhar.
 
-- PHP 8.2+
-- MongoDB
-- Composer
+Sem chave do Gemini a API não quebra: ela entra em **modo demo** e monta o texto a partir de um template. Se o Gemini falhar no meio do caminho (cota estourada, rede fora), ela também cai pro template e avisa no campo `fonte`.
 
-## Instalação
+## Stack
 
-1. Clone o repositório:
+- Node.js 20.12+ e TypeScript
+- [Hono](https://hono.dev) pro servidor HTTP
+- [Zod](https://zod.dev) pra validar o que chega
+- Gemini (API REST, plano gratuito) pra gerar o texto
+- Vitest pros testes
+
+## Rodando localmente
+
 ```bash
-git clone https://github.com/seu-usuario/casegenai.git
+git clone https://github.com/telessthalita/casegenai.git
 cd casegenai
+npm install
+npm run dev
 ```
 
-2. Instale as dependências:
-```bash
-composer install
-```
+Abre http://localhost:8080 e clica em **Preencher com exemplo** pra ver funcionando.
 
-3. Configure as variáveis de ambiente:
+### Ligando a IA
+
+1. Pega uma chave grátis em https://aistudio.google.com/apikey (não pede cartão).
+2. Copia o arquivo de exemplo e cola a chave nele:
+
 ```bash
 cp .env.example .env
 ```
 
-4. Edite o arquivo `.env` com suas configurações:
 ```
-MONGODB_URI=mongodb://localhost:27017
-MONGODB_DATABASE=casegenai
-GEMINI_API_KEY=sua_chave_api_gemini
-JWT_SECRET=chave_secreta_para_jwt
-RATE_LIMIT=100
+GEMINI_API_KEY=sua_chave_aqui
 ```
 
-5. Inicie o servidor:
+3. Reinicia o `npm run dev`. No terminal aparece `modo gemini`.
+
+### Variáveis de ambiente
+
+| Variável | Pra que serve | Padrão |
+| --- | --- | --- |
+| `GEMINI_API_KEY` | Chave do Gemini. Sem ela, roda em modo demo | vazio |
+| `GEMINI_MODEL` | Qual modelo do Gemini usar | `gemini-2.5-flash` |
+| `PORT` | Porta do servidor | `8080` |
+| `RATE_LIMIT` | Quantos cases cada IP pode gerar por hora | `20` |
+
+### Scripts
+
+| Comando | O que faz |
+| --- | --- |
+| `npm run dev` | Sobe o servidor e reinicia quando você salva um arquivo |
+| `npm start` | Sobe o servidor (é o que roda em produção) |
+| `npm test` | Roda os testes |
+| `npm run typecheck` | Confere os tipos do TypeScript |
+
+## Endpoints
+
+### `GET /api`
+
+Diz se a API está de pé e em qual modo.
+
+```json
+{ "status": "success", "message": "CaseGenAI API está funcionando!", "modo": "gemini" }
+```
+
+### `POST /api/case`
+
+Gera um case novo.
+
 ```bash
-php -S 0.0.0.0:8080 -t public
-```
-
-## Estrutura do Projeto
-
-```
-CaseGenAI/
-├── public/
-│   └── index.php
-├── src/
-│   ├── Controllers/
-│   │   └── CaseController.php
-│   ├── Models/
-│   │   ├── Database.php
-│   │   └── CaseStudy.php
-│   ├── Services/
-│   │   └── GeminiService.php
-│   ├── Middleware/
-│   │   ├── LogMiddleware.php
-│   │   ├── RateLimitMiddleware.php
-│   │   └── SecurityMiddleware.php
-│   └── Config/
-│       └── routes.php
-├── vendor/
-├── logs/
-├── .env
-├── .env.example
-└── composer.json
-```
-
-## Endpoints da API
-
-### Verificar Status da API
-
-```
-GET /
-```
-
-Resposta:
-```json
-{
-    "status": "success",
-    "message": "CaseGenAI API está funcionando!"
-}
-```
-
-### Criar um Case Study
-
-```
-POST /api/case
-```
-
-Corpo da requisição:
-```json
-{
+curl -X POST http://localhost:8080/api/case \
+  -H "content-type: application/json" \
+  -d '{
     "startup_nome": "FitTrack",
+    "setor": "saúde e bem-estar",
+    "periodo": "12 meses",
+    "contexto": "Lançamos o plano anual e um programa de indicação",
     "metricas": {
-        "usuarios_antes": 1000,
-        "usuarios_depois": 4500,
-        "receita_antes": 5000,
-        "receita_depois": 22000
+      "usuarios_antes": 1000,
+      "usuarios_depois": 4500,
+      "receita_antes": 5000,
+      "receita_depois": 22000
     }
-}
+  }'
 ```
 
-Resposta:
+| Campo | Obrigatório | Regra |
+| --- | --- | --- |
+| `startup_nome` | sim | até 80 caracteres |
+| `metricas` | sim | de 1 a 16 números (zero ou mais). Nomes em minúsculas, com letras, números e `_` |
+| `setor` | não | até 60 caracteres |
+| `periodo` | não | até 60 caracteres |
+| `contexto` | não | até 500 caracteres. O que a startup fez de diferente |
+
+Resposta (`201`):
+
 ```json
 {
-    "status": "success",
-    "message": "Case study gerado com sucesso",
-    "data": {
-        "id": "65a4f3c2e8d7b9a1c2d3e4f5",
-        "url": "/case/fittrack",
-        "texto_preview": "FitTrack: Transformando Saúde em Crescimento Exponencial..."
-    }
+  "status": "success",
+  "message": "Case gerado com sucesso",
+  "data": {
+    "id": "fittrack-3f9a1c2e",
+    "url": "/case/fittrack-3f9a1c2e",
+    "titulo": "FitTrack: 4,5x mais usuários em um ano",
+    "resumo": "...",
+    "texto": "Parágrafo 1...\n\nParágrafo 2...",
+    "fonte": "gemini",
+    "destaques": [
+      { "metrica": "usuarios", "antes": 1000, "depois": 4500, "variacao_pct": 350, "multiplicador": 4.5 },
+      { "metrica": "receita", "antes": 5000, "depois": 22000, "variacao_pct": 340, "multiplicador": 4.4 }
+    ],
+    "startup_nome": "FitTrack",
+    "metricas": { "...": "..." },
+    "created_at": "2026-11-16T13:30:00.000Z"
+  }
 }
 ```
 
-### Consultar um Case Study
+Erros possíveis: `400` (JSON quebrado), `422` (dados inválidos, com a lista em `erros`), `413` (corpo maior que 16 KB) e `429` (passou do limite por hora).
 
+### `GET /api/case/{id}`
+
+Devolve um case já gerado. `404` se não existir.
+
+### `GET /case/{id}`
+
+A mesma coisa, só que numa página bonitinha pra compartilhar.
+
+## Segurança
+
+- Validação de tudo que entra com Zod (campos extras são recusados)
+- Chave do Gemini só em variável de ambiente, nunca no código
+- Rate limit por IP
+- Headers de segurança (Content-Security-Policy, X-Frame-Options e companhia)
+- Conteúdo escapado na página do case, nada de HTML injetado
+
+## Limitações (por enquanto)
+
+- Os cases ficam guardados **na memória** do servidor. Reiniciou, sumiram. Pra uma demo isso basta; o próximo passo seria plugar um banco (Supabase ou MongoDB Atlas, os dois têm plano grátis).
+- O rate limit também fica em memória, então vale por instância.
+
+## Publicando
+
+O repo já tem um `render.yaml` pronto pro plano grátis do [Render](https://render.com):
+
+1. No Render, **New > Blueprint** e escolhe este repositório.
+2. Quando pedir, cola a `GEMINI_API_KEY`.
+3. Pronto: a URL pública aparece no painel.
+
+No plano grátis o servidor dorme depois de uns 15 minutos parado, então o primeiro acesso depois disso demora uns segundos.
+
+## Testes
+
+```bash
+npm test
 ```
-GET /api/case/{id}
-```
 
-Resposta:
-```json
-{
-    "status": "success",
-    "data": {
-        "_id": "65a4f3c2e8d7b9a1c2d3e4f5",
-        "startup_nome": "FitTrack",
-        "metricas": {
-            "usuarios_antes": 1000,
-            "usuarios_depois": 4500,
-            "receita_antes": 5000,
-            "receita_depois": 22000
-        },
-        "texto_ia": "FitTrack: Transformando Saúde em Crescimento Exponencial...",
-        "url_slug": "fittrack",
-        "created_at": "2025-04-23 17:30:00",
-        "updated_at": "2025-04-23 17:30:00"
-    }
-}
-```
-
-## Recursos de Segurança
-
-- Validação de inputs contra XSS/SQL Injection
-- Armazenamento seguro da chave da API Gemini em variável de ambiente
-- Rate limiting (100 requisições/hora por IP)
-- Headers de segurança (Content-Security-Policy, X-XSS-Protection, etc.)
-- Logs de acesso aos cases
-
-## Integração com Gemini AI
-
-A API utiliza o Gemini AI da Google para gerar textos de case studies com base nas métricas fornecidas. O serviço formata um prompt adequado com os dados da startup e processa a resposta da API para criar um case study completo e persuasivo.
+Cobrem o cálculo das métricas, validação, rate limit, as páginas e a integração com o Gemini (com a resposta simulada, sem gastar cota).
 
 ## Licença
 
-Este projeto está licenciado sob a licença MIT.
+MIT

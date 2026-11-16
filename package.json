@@ -1,0 +1,28 @@
+{
+  "name": "casegenai",
+  "version": "1.0.0",
+  "description": "API que transforma métricas de startups em cases persuasivos com IA",
+  "type": "module",
+  "license": "MIT",
+  "author": "Thalita Teles",
+  "engines": {
+    "node": ">=20.12"
+  },
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "start": "tsx src/server.ts",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@hono/node-server": "^2.1.8",
+    "hono": "^4.13.19",
+    "tsx": "^4.23.15",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.6",
+    "typescript": "^5.9.3",
+    "vitest": "^5.1.0"
+  }
+}

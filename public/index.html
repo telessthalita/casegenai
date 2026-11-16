@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>CaseGenAI</title>
+    <meta name="description" content="Transforma as métricas da sua startup num case que dá vontade de ler." />
+    <link rel="stylesheet" href="/style.css" />
+    <script src="/app.js" defer></script>
+  </head>
+  <body>
+    <main class="wrap">
+      <header>
+        <p class="tag">CaseGenAI</p>
+        <h1>Número solto não convence ninguém.</h1>
+        <p class="sub">
+          Joga aqui as métricas da sua startup (antes e depois) e a IA devolve um case pronto pra
+          postar, mandar pra investidor ou colocar no site.
+        </p>
+      </header>
+
+      <form id="form" novalidate>
+        <div class="linha">
+          <label>Nome da startup
+            <input name="startup_nome" required maxlength="80" placeholder="FitTrack" />
+          </label>
+          <label>Setor <span class="opc">(opcional)</span>
+            <input name="setor" maxlength="60" placeholder="saúde e bem-estar" />
+          </label>
+        </div>
+        <div class="linha">
+          <label>Período <span class="opc">(opcional)</span>
+            <input name="periodo" maxlength="60" placeholder="12 meses" />
+          </label>
+        </div>
+        <label>Contexto <span class="opc">(opcional: o que vocês fizeram de diferente?)</span>
+          <textarea name="contexto" maxlength="500" rows="2" placeholder="Lançamos o plano anual e um programa de indicação"></textarea>
+        </label>
+
+        <fieldset>
+          <legend>Métricas</legend>
+          <div class="metricas-cab"><span>métrica</span><span>antes</span><span>depois</span><span></span></div>
+          <div id="metricas"></div>
+          <button type="button" id="add" class="sec">+ adicionar métrica</button>
+        </fieldset>
+
+        <div class="acoes">
+          <button type="submit" id="enviar">Gerar case</button>
+          <button type="button" id="exemplo" class="sec">Preencher com exemplo</button>
+        </div>
+        <p id="erro" class="erro" role="alert" hidden></p>
+      </form>
+
+      <section id="resultado" hidden aria-live="polite"></section>
+
+      <footer>
+        <p id="modo"></p>
+        <p>É uma API! Dá pra chamar direto: <code>POST /api/case</code>. Detalhes no
+          <a href="https://github.com/telessthalita/casegenai">GitHub</a>.</p>
+      </footer>
+    </main>
+  </body>
+</html>
